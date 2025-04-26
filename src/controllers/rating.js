@@ -3,7 +3,7 @@ import {
   upsertRating,
   deleteRating,
   getRatingsByUserWithBooks,
-  getRatingsForBook,
+  getRating,
 } from '../services/ratings.js';
 
 export const upsertRatingController = async (req, res) => {
@@ -12,9 +12,10 @@ export const upsertRatingController = async (req, res) => {
   const rating = await upsertRating({ ...req.body, userId, bookId });
   res.status(201).json({ success: true, data: rating });
 };
-export const getRatingsForBookController = async (req, res) => {
+export const getRatingController = async (req, res) => {
   const { bookId } = req.params;
-  const rating = await getRatingsForBook(bookId);
+  const userId = req.user._id;
+  const rating = await getRating(bookId, userId);
 
   if (!rating) {
     throw createHttpError(404, 'rating not found');

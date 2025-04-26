@@ -18,7 +18,11 @@ export const setupServer = () => {
       limit: '100kb',
     }),
   );
-  app.use(cors());
+  app.use(
+    cors({
+      origin: true,
+    }),
+  );
   app.use(cookieParser());
   app.use(
     pino({

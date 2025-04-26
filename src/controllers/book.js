@@ -49,11 +49,22 @@ export const getBookByIdController = async (req, res) => {
 
 // Analysis and Recommendations
 export const getSpecialBooksController = async (req, res) => {
-  const books = await getSpecialBooks(req.body);
+  const books = await getSpecialBooks(req.user);
 
   res.json({
     status: 200,
     message: 'Successfully found special books!',
+    data: books,
+  });
+};
+
+export const getRecentBooksController = async (req, res) => {
+  const userId = req.user._id;
+  const books = await getRecentBooks(userId);
+
+  res.json({
+    status: 200,
+    message: 'Successfully found recently rated books!',
     data: books,
   });
 };
@@ -64,16 +75,6 @@ export const getBestBooksController = async (req, res) => {
   res.json({
     status: 200,
     message: 'Successfully found best rated books!',
-    data: books,
-  });
-};
-
-export const getRecentBooksController = async (req, res) => {
-  const books = await getRecentBooks(req.user._id);
-
-  res.json({
-    status: 200,
-    message: 'Successfully found recently rated books!',
     data: books,
   });
 };

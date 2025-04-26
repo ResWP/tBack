@@ -40,17 +40,26 @@ export const upsertRating = async (payload) => {
  * @returns {Promise<Array>} - A promise that resolves to an array of ratings for the specified user.
  */
 export const getRatingsByUserWithBooks = async (userId) => {
-  const ratings = await RatingsCollection.find({ userId }).toArray();
+  const ratings = await RatingsCollection.find({ userId }).lean();
 
   const bookIds = ratings.map((rating) => rating.bookId);
 
-  const books = await BooksCollection.find({ _id: { $in: bookIds } }).toArray();
+  const books = await BooksCollection.find({ _id: { $in: bookIds } }).lean();
 
   return ratings.map((rating) => ({
     ...rating,
-    book: books.find((book) => book._id.toString() === rating.bookId),
+    book: books.find(
+      (book) => book._id.toString() === rating.bookId.toString(),
+    ),
   }));
 };
-export const getRatingsForBook = async (bookId) => {
-  return await RatingsCollection.find({ bookId }).toArray();
+
+/*
+ * Fetches user rating for a specific book.
+ * @param {string} bookId - The ID of the book whose ratings to fetch.
+ * @returns {Promise<Array>} - A promise that resolves to an array of ratings for the specified book.
+ */
+export const getRating = async (bookId, userId) => {
+  const rating = await RatingsCollection.findOne({ bookId, userId });
+  return rating;
 };

@@ -3,7 +3,7 @@ import { ctrlWrapper } from '../utils/ctrlWrapper.js';
 import {
   upsertRatingController,
   deleteRatingController,
-  getRatingsForBookController,
+  getRatingController,
   getRatingsByUserController,
 } from '../controllers/rating.js';
 import { authenticate } from '../middlewares/authenticate.js';
@@ -13,22 +13,16 @@ import { validateBody } from '../middlewares/validateBody.js';
 
 const router = Router();
 
+router.use(authenticate);
+
 router.post(
   '/:bookId',
   isValidId,
-  authenticate,
   validateBody(ratingSchema),
   ctrlWrapper(upsertRatingController),
 );
-
-router.delete(
-  '/:bookId',
-  isValidId,
-  authenticate,
-  ctrlWrapper(deleteRatingController),
-);
-
-router.get('/user', authenticate, ctrlWrapper(getRatingsByUserController));
-router.get('/:bookId', isValidId, ctrlWrapper(getRatingsForBookController));
+router.delete('/:bookId', isValidId, ctrlWrapper(deleteRatingController));
+router.get('/user', ctrlWrapper(getRatingsByUserController));
+router.get('/:bookId', isValidId, ctrlWrapper(getRatingController));
 
 export default router;

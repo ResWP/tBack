@@ -160,7 +160,6 @@ export const getSpecialBooks = async (data) => {
     const { age, city, _id: userId } = data;
 
     const userRatings = await RatingsCollection.find({ userId }).lean();
-
     if (userRatings.length === 0) {
       console.log('No ratings found for user, cannot generate recommendations');
       return userRatings;
@@ -180,7 +179,7 @@ export const getSpecialBooks = async (data) => {
       ratings[isbn] = rating.rating;
     });
 
-    const response = await fetchFromPythonBackend('/api/recommendations', {
+    const response = await fetchFromPythonBackend('/recommendations', {
       ratings,
       age,
       city,

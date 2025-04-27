@@ -4,7 +4,7 @@ import createHttpError from 'http-errors';
 export const fetchFromPythonBackend = async (endpoint, data) => {
   try {
     const response = await axios.post(
-      `https://book-recommender-llg8.onrender.com${endpoint}`,
+      `https://tback-production.up.railway.app${endpoint}`,
       data,
     );
     return response.data;

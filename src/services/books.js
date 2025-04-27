@@ -179,7 +179,7 @@ export const getSpecialBooks = async (data) => {
       ratings[isbn] = rating.rating;
     });
 
-    const response = await fetchFromPythonBackend('/recommendations', {
+    const response = await fetchFromPythonBackend('/api/recommendations', {
       ratings,
       age,
       city,

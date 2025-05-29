@@ -42,15 +42,53 @@ export const getBooks = async ({
     matchConditions.publisher = { $regex: new RegExp(filter.publisher, 'i') };
   }
 
-  if (filter.minYear && filter.maxYear && filter.minYear > filter.maxYear) {
-    [filter.minYear, filter.maxYear] = [filter.maxYear, filter.minYear];
+  // FIXED: Year range filtering
+  if (filter.minYear !== undefined || filter.maxYear !== undefined) {
+    // Auto-swap if min > max
+    let minYear = filter.minYear;
+    let maxYear = filter.maxYear;
+
+    if (minYear !== undefined && maxYear !== undefined && minYear > maxYear) {
+      [minYear, maxYear] = [maxYear, minYear];
+    }
+
+    matchConditions.yearOfPublication = {};
+    if (minYear !== undefined) {
+      matchConditions.yearOfPublication.$gte = minYear;
+    }
+    if (maxYear !== undefined) {
+      matchConditions.yearOfPublication.$lte = maxYear;
+    }
   }
 
-  if (filter.minYear || filter.maxYear) {
-    matchConditions.yearOfPublication = {
-      ...(filter.minYear && { $gte: filter.minYear }),
-      ...(filter.maxYear && { $lte: filter.maxYear }),
-    };
+  // FIXED: Build rating filter conditions for second match stage
+  const ratingMatchConditions = {};
+  if (filter.minAvgRating !== undefined || filter.maxAvgRating !== undefined) {
+    ratingMatchConditions.avgRating = {};
+    if (filter.minAvgRating !== undefined) {
+      ratingMatchConditions.avgRating.$gte = filter.minAvgRating;
+    }
+    if (filter.maxAvgRating !== undefined) {
+      ratingMatchConditions.avgRating.$lte = filter.maxAvgRating;
+    }
+  }
+
+  // FIXED: Add isRated filter support
+  if (filter.isRated !== undefined) {
+    if (filter.isRated) {
+      // Only books that have ratings
+      ratingMatchConditions.avgRating = {
+        ...ratingMatchConditions.avgRating,
+        $exists: true,
+        $ne: null,
+      };
+    } else {
+      // Only books without ratings
+      ratingMatchConditions.$or = [
+        { avgRating: { $exists: false } },
+        { avgRating: null },
+      ];
+    }
   }
 
   const booksQuery = BooksCollection.aggregate([
@@ -65,20 +103,18 @@ export const getBooks = async ({
     },
     {
       $addFields: {
-        avgRating: { $avg: '$ratings.rating' },
+        avgRating: {
+          $cond: {
+            if: { $gt: [{ $size: '$ratings' }, 0] },
+            then: { $avg: '$ratings.rating' },
+            else: null,
+          },
+        },
       },
     },
-    ...(filter.minAvgRating || filter.maxAvgRating
-      ? [
-          {
-            $match: {
-              avgRating: {
-                ...(filter.minAvgRating && { $gte: filter.minAvgRating }),
-                ...(filter.maxAvgRating && { $lte: filter.maxAvgRating }),
-              },
-            },
-          },
-        ]
+    // FIXED: Apply rating filters only if they exist
+    ...(Object.keys(ratingMatchConditions).length > 0
+      ? [{ $match: ratingMatchConditions }]
       : []),
     {
       $unset: 'ratings',
@@ -97,20 +133,18 @@ export const getBooks = async ({
     },
     {
       $addFields: {
-        avgRating: { $avg: '$ratings.rating' },
+        avgRating: {
+          $cond: {
+            if: { $gt: [{ $size: '$ratings' }, 0] },
+            then: { $avg: '$ratings.rating' },
+            else: null,
+          },
+        },
       },
     },
-    ...(filter.minAvgRating || filter.maxAvgRating
-      ? [
-          {
-            $match: {
-              avgRating: {
-                ...(filter.minAvgRating && { $gte: filter.minAvgRating }),
-                ...(filter.maxAvgRating && { $lte: filter.maxAvgRating }),
-              },
-            },
-          },
-        ]
+    // FIXED: Apply rating filters only if they exist
+    ...(Object.keys(ratingMatchConditions).length > 0
+      ? [{ $match: ratingMatchConditions }]
       : []),
     { $count: 'total' },
   ];
@@ -155,9 +189,9 @@ export const getBookById = async (bookId) => {
   return book[0] || null;
 };
 
-export const getSpecialBooks = async (data) => {
+export const getSpecialBooks = async (user) => {
   try {
-    const { age, city, _id: userId } = data;
+    const { _id: userId } = user;
 
     const userRatings = await RatingsCollection.find({ userId }).lean();
     if (userRatings.length === 0) {
@@ -172,21 +206,18 @@ export const getSpecialBooks = async (data) => {
     })
       .select('ISBN _id title')
       .lean();
-
     const ratings = new Map();
     userRatings.forEach((rating, index) => {
       let isbn = ratedBooks[index].ISBN.toString();
       ratings[isbn] = rating.rating;
     });
 
-    const response = await fetchFromPythonBackend('/api/recommendations', {
+    const response = await fetchFromPythonBackend('/recommend', {
       ratings,
-      age,
-      city,
     });
 
     const { recommendations } = response;
-
+    // return recommendations;
     if (
       !recommendations ||
       !Array.isArray(recommendations) ||
@@ -214,23 +245,19 @@ export const getSpecialBooks = async (data) => {
     const isbnToIdMap = {};
     const normalizedIsbnToIdMap = {};
 
+    // Create maps for efficient lookup
     books.forEach((book) => {
-      isbnToIdMap[book.ISBN] = book._id;
-      normalizedIsbnToIdMap[book.ISBN.trim().replace(/-/g, '')] = book._id;
+      isbnToIdMap[book.ISBN] = book; // Store the entire book object
+      normalizedIsbnToIdMap[book.ISBN.trim().replace(/-/g, '')] = book; // Store the entire book object
     });
 
-    return recommendations.map((book) => {
-      let bookId = isbnToIdMap[book.ISBN];
-
-      if (!bookId) {
-        const normalizedISBN = book.ISBN.trim().replace(/-/g, '');
-        bookId = normalizedIsbnToIdMap[normalizedISBN];
+    return recommendations.map((recBook) => {
+      let book = isbnToIdMap[recBook.ISBN];
+      if (!book) {
+        const normalizedISBN = recBook.ISBN.trim().replace(/-/g, '');
+        book = normalizedIsbnToIdMap[normalizedISBN];
       }
-
-      return {
-        ...book,
-        _id: bookId || null,
-      };
+      return book ? { ...recBook, ...book } : { ...recBook }; //return the whole book
     });
   } catch (error) {
     console.error('Error in getSpecialBooks:', error);
@@ -239,15 +266,21 @@ export const getSpecialBooks = async (data) => {
 };
 
 export const getRecentBooks = async (userId) => {
-  const ratings = await RatingsCollection.find({ userId })
-    .lean()
-    .sort({ createdAt: -1 })
-    .limit(10);
-  const bookIds = ratings.map((rating) => rating.bookId);
-
-  const books = await BooksCollection.find({ _id: { $in: bookIds } }).lean();
-
-  return books;
+  return await RatingsCollection.aggregate([
+    { $match: { userId } },
+    { $sort: { createdAt: -1 } },
+    { $limit: 10 },
+    {
+      $lookup: {
+        from: 'books',
+        localField: 'bookId',
+        foreignField: '_id',
+        as: 'book',
+      },
+    },
+    { $unwind: '$book' },
+    { $replaceRoot: { newRoot: '$book' } },
+  ]);
 };
 
 export const getBestBooks = async () => {

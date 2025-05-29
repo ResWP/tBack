@@ -1,4 +1,6 @@
+// FIXED: Enhanced parsing functions
 const parseBoolean = (value) => {
+  if (value === undefined) return undefined;
   if (typeof value === 'string') {
     if (value.toLowerCase() === 'true') return true;
     if (value.toLowerCase() === 'false') return false;
@@ -6,16 +8,17 @@ const parseBoolean = (value) => {
   return undefined;
 };
 
-const parseNumber = (number) => {
-  const isString = typeof number === 'string';
-  if (!isString) return;
+const parseNumber = (value, fallback = undefined) => {
+  if (value === undefined || value === '') return fallback;
+  const num = Number(value);
+  return isNaN(num) ? fallback : num;
+};
 
-  const parsedNumber = parseInt(number);
-  if (Number.isNaN(parsedNumber)) {
-    return;
-  }
-
-  return parsedNumber;
+// FIXED: Better float parsing for ratings
+const parseFloatSafe = (value, fallback = undefined) => {
+  if (value === undefined || value === '') return fallback;
+  const num = Number.parseFloat(value); // explicitly use built-in parseFloat
+  return isNaN(num) ? fallback : num;
 };
 
 export const parseFilterParams = (query) => {
@@ -30,20 +33,14 @@ export const parseFilterParams = (query) => {
     maxYear,
   } = query;
 
-  const parsedIsRated = parseBoolean(isRated);
-  const parsedMaxYear = parseNumber(maxYear);
-  const parsedMinYear = parseNumber(minYear);
-  const parsedMaxAvgRating = parseNumber(maxAvgRating);
-  const parsedMinAvgRating = parseNumber(minAvgRating);
-
   return {
-    isRated: parsedIsRated,
-    title: title,
-    author: author,
-    publisher: publisher,
-    maxYear: parsedMaxYear,
-    minYear: parsedMinYear,
-    maxAvgRating: parsedMaxAvgRating,
-    minAvgRating: parsedMinAvgRating,
+    isRated: parseBoolean(isRated),
+    title: title || undefined,
+    author: author || undefined,
+    publisher: publisher || undefined,
+    minYear: parseNumber(minYear),
+    maxYear: parseNumber(maxYear),
+    minAvgRating: parseFloatSafe(minAvgRating),
+    maxAvgRating: parseFloatSafe(maxAvgRating),
   };
 };

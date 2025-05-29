@@ -2,12 +2,11 @@ import { SORT_ORDER } from '../constants/index.js';
 
 const parseSortOrder = (sortOrder) => {
   const isKnownOrder = [SORT_ORDER.ASC, SORT_ORDER.DESC].includes(sortOrder);
-  if (isKnownOrder) return sortOrder;
-  return SORT_ORDER.ASC;
+  return isKnownOrder ? sortOrder : SORT_ORDER.ASC;
 };
 
 const parseSortBy = (sortBy) => {
-  const keysOfBook = [
+  const validSortKeys = [
     '_id',
     'bookTitle',
     'bookAuthor',
@@ -18,21 +17,26 @@ const parseSortBy = (sortBy) => {
     'createdAt',
     'updatedAt',
   ];
-
-  if (keysOfBook.includes(sortBy)) {
-    return sortBy;
-  }
-  return '_id';
+  return validSortKeys.includes(sortBy) ? sortBy : '_id';
 };
 
 export const parseSortParams = (query) => {
   const { sortOrder, sortBy } = query;
-
   const parsedSortOrder = parseSortOrder(sortOrder);
   const parsedSortBy = parseSortBy(sortBy);
 
+  const stringFields = ['bookTitle', 'bookAuthor', 'publisher'];
+  const isStringField = stringFields.includes(parsedSortBy);
+
+  const effectiveSortOrder = isStringField
+    ? parsedSortOrder === SORT_ORDER.ASC
+      ? SORT_ORDER.DESC
+      : SORT_ORDER.ASC
+    : parsedSortOrder;
+
   return {
-    sortOrder: parsedSortOrder,
+    sortOrder: effectiveSortOrder,
     sortBy: parsedSortBy,
+    isReversed: isStringField, // Optional flag for UI indication
   };
 };

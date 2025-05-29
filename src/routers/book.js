@@ -15,9 +15,9 @@ const router = Router();
 
 router.get('/', ctrlWrapper(getBooksController));
 router.get('/best', ctrlWrapper(getBestBooksController));
-router.use(authenticate);
-router.get('/recent', ctrlWrapper(getRecentBooksController));
-router.get('/special', ctrlWrapper(getSpecialBooksController));
 router.get('/:bookId', isValidId, ctrlWrapper(getBookByIdController));
+router.use(authenticate);
+router.post('/special', ctrlWrapper(getSpecialBooksController));
+router.post('/recent', ctrlWrapper(getRecentBooksController));
 
 export default router;

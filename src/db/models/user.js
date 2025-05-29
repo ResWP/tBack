@@ -5,7 +5,6 @@ const usersSchema = new Schema(
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    ratings: [{ type: Schema.Types.ObjectId, ref: 'rating' }],
   },
   { timestamps: true, versionKey: false },
 );

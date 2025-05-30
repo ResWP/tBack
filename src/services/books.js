@@ -152,9 +152,9 @@ export const getBooks = async ({
   const [countResult, books] = await Promise.all([
     BooksCollection.aggregate(countPipeline),
     booksQuery
+      .sort({ [sortBy]: sortOrder })
       .skip(skip)
       .limit(limit)
-      .sort({ [sortBy]: sortOrder })
       .exec(),
   ]);
 

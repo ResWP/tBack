@@ -194,8 +194,10 @@ export const getSpecialBooks = async (user) => {
     const { _id: userId } = user;
 
     const userRatings = await RatingsCollection.find({ userId }).lean();
-    if (userRatings.length === 0) {
-      console.log('No ratings found for user, cannot generate recommendations');
+    if (userRatings.length <= 5) {
+      console.log(
+        'Not enough ratings found for user, cannot generate recommendations',
+      );
       return userRatings;
     }
 

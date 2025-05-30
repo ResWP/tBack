@@ -198,7 +198,7 @@ export const getSpecialBooks = async (user) => {
       console.log(
         'Not enough ratings found for user, cannot generate recommendations',
       );
-      return userRatings;
+      return [];
     }
 
     const bookIds = userRatings.map((rating) => rating.bookId);
